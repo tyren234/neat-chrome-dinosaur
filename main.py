@@ -1,7 +1,11 @@
 #https://www.youtube.com/watch?v=lcC-jiCuDnQ&list=PL30AETbxgR-d03tf_HIr8-OA1gmClI3mE&index=2&t=103s
+from asyncore import read
+from copyreg import pickle
+import enum
 from click import confirmation_option
 import pygame
 import os, random, sys, neat, math
+import pickle
 
 pygame.init()
 
@@ -40,6 +44,7 @@ class Dinosaur:
         self.jump_vel = self.JUMP_VEL
         self.rect = pygame.Rect(self.X_POS, self.Y_POS, img.get_width(), img.get_height())
         self.step_index = 0
+        self.color = (random.randint(0,255), random.randint(0,255), random.randint(0,255))
 
     def update (self):
         if self.dino_run:
@@ -66,7 +71,12 @@ class Dinosaur:
         self.step_index += 1
 
     def draw (self, SCREEN):
+        #dino
         SCREEN.blit(self.image, (self.rect.x, self.rect.y))
+        #border
+        pygame.draw.rect(SCREEN, self.color, (self.rect.x, self.rect.y, self.rect.width, self.rect.height),2)
+        for obstacle in obstacles:
+            pygame.draw.line(SCREEN, self.color, (self.rect.x + 55, self.rect.y + 11), obstacle.rect.center, 2)
 
 class Obstacle:
     def __init__(self, image, number_of_cacti):
@@ -79,6 +89,7 @@ class Obstacle:
         self.rect.x -= game_speed
         if self.rect.x < -self.rect.width:
             obstacles.pop()
+
 
     def draw (self, SCREEN):
         SCREEN.blit(self.image[self.type], self.rect)
@@ -134,6 +145,16 @@ def eval_genomes(genomes, config):
         text = FONT.render(f'Points: {str(points)}', True, (0,0,0))
         SCREEN.blit(text, (SCREEN_WIDTH-150,50))
 
+    def statistics():
+        global dinosaurs, game_speed, ge
+        text_1 = FONT.render(f'Dinosaurs Alive: {str(len(dinosaurs))}', True, (0,0,0))
+        text_2 = FONT.render(f'Generation: {population.generation}', True, (0,0,0))
+        text_3 = FONT.render(f'Game Speed: {str(game_speed)}', True, (0,0,0))
+
+        SCREEN.blit(text_1, (50, 450))
+        SCREEN.blit(text_2, (50, 480))
+        SCREEN.blit(text_3, (50, 510))
+
     def background():
         global x_pos_bg, y_pos_bg
         image_width = BG.get_width()
@@ -155,6 +176,8 @@ def eval_genomes(genomes, config):
         for dinosaur in dinosaurs:
             dinosaur.update()
             dinosaur.draw(SCREEN)
+            
+
 
         if len(dinosaurs) == 0:
             break
@@ -182,8 +205,10 @@ def eval_genomes(genomes, config):
             if output[0] > 0.5 and dinosaur.rect.y == dinosaur.Y_POS:
                 dinosaur.dino_jump = True
                 dinosaur.dino_run = False
-        
+        statistics()
         score()
+        for i, dinosaur in enumerate(dinosaurs):
+            ge[i].fitness += 1
         background()
         clock.tick(30) 
         pygame.display.update()
@@ -197,11 +222,25 @@ def run(config_path):
         config_path
     )
 
-    pop = neat.Population(config)
-    pop.run(eval_genomes, 50) #evolution function / fitness function
+    with open("real_winner.pkl", 'rb') as handle:
+        last_win = pickle.load(handle)
 
+    global population
+    population = neat.Checkpointer.restore_checkpoint("neat-checkpoint-4")
+    # population = neat.Population(config)    
+    population.add_reporter(neat.StdOutReporter(True))
+    stats = neat.StatisticsReporter()
+    population.add_reporter(stats)
+    population.add_reporter(neat.Checkpointer(1))
+
+    population.run(eval_genomes, 5) #evolution function / fitness function
+    win = population.best_genome
+    #pickle.dump(winner, open('winner.pkl', 'wb'))
+    #pickle.dump(win, open('real_winner.pkl', 'wb'))
+    with open("real_winner.pkl", 'wb') as handle:
+        pickle.dump(win, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 if __name__ == '__main__':
-    local_dir = sys.path.dirname(__file__)
+    local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, "config.txt")
     run(config_path)
