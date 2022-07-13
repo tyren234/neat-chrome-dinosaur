@@ -1,4 +1,3 @@
-#https://www.youtube.com/watch?v=lcC-jiCuDnQ&list=PL30AETbxgR-d03tf_HIr8-OA1gmClI3mE&index=2&t=103s
 from asyncore import read
 from copyreg import pickle
 import enum
@@ -226,12 +225,12 @@ def run(config_path):
         last_win = pickle.load(handle)
 
     global population
-    population = neat.Checkpointer.restore_checkpoint("neat-checkpoint-4")
+    population = neat.Checkpointer.restore_checkpoint("neat-checkpoint-6")
     # population = neat.Population(config)    
     population.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     population.add_reporter(stats)
-    population.add_reporter(neat.Checkpointer(1))
+    population.add_reporter(neat.Checkpointer(2))
 
     population.run(eval_genomes, 5) #evolution function / fitness function
     win = population.best_genome
